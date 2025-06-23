@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Denetim Kayıtları</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet" />
+</head>
+<body>
+  <div class="container mt-5">
+    <h2 class="mb-4 text-center">Denetim Kayıtları</h2>
+
+    <button class="btn btn-success mb-3" data-bs-toggle="modal" data-bs-target="#denetimModal">
+      <i class="fas fa-plus"></i> Yeni Denetim Ekle
+    </button>
+
+    <table class="table table-bordered table-striped">
+      <thead class="table-dark">
+        <tr>
+          <th>#</th>
+          <th>Konu</th>
+          <th>Sorumlu Personel</th>
+          <th>Tarih</th>
+          <th>Sonuç</th>
+          <th>İşlemler</th>
+        </tr>
+      </thead>
+      <tbody id="denetimListesi">
+        <tr><td colspan="6" class="text-center">Yükleniyor...</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Modal: Ekle/Güncelle -->
+  <div class="modal fade" id="denetimModal" tabindex="-1" aria-labelledby="denetimModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <form id="denetimForm">
+          <div class="modal-header">
+            <h5 class="modal-title" id="denetimModalLabel">Yeni Denetim Ekle</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Kapat"></button>
+          </div>
+          <div class="modal-body">
+            <div class="mb-3">
+              <label for="konu" class="form-label">Konu</label>
+              <input type="text" id="konu" class="form-control" required />
+            </div>
+            <div class="mb-3">
+              <label for="personel" class="form-label">Sorumlu Personel</label>
+              <input type="text" id="personel" class="form-control" required />
+            </div>
+            <div class="mb-3">
+              <label for="tarih" class="form-label">Tarih</label>
+              <input type="date" id="tarih" class="form-control" required />
+            </div>
+            <div class="mb-3">
+              <label for="sonuc" class="form-label">Sonuç</label>
+              <select id="sonuc" class="form-select" required>
+                <option value="başarılı">Başarılı</option>
+                <option value="uygunsuzluk">Uygunsuzluk</option>
+                <option value="izlemeye alındı">İzlemeye Alındı</option>
+              </select>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+            <button type="submit" class="btn btn-primary">Kaydet</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+  <script>
+    const denetimListesi = document.getElementById('denetimListesi');
+    const denetimForm = document.getElementById('denetimForm');
+    const modalElement = document.getElementById('denetimModal');
+    const modal = new bootstrap.Modal(modalElement);
+
+    let guncellenenId = null; // Güncellenen kayıt id'si
+
+    // Denetimleri getir ve listele
+    function denetimleriGetir() {
+      fetch('http://localhost:3000/api/denetimler')
+        .then(res => res.json())
+        .then(data => {
+          denetimListesi.innerHTML = '';
+          if(data.length === 0) {
+            denetimListesi.innerHTML = '<tr><td colspan="6" class="text-center">Kayıt bulunamadı.</td></tr>';
+            return;
+          }
+          data.forEach((d, i) => {
+            denetimListesi.innerHTML += `
+              <tr data-id="${d.id}">
+                <td>${i + 1}</td>
+                <td>${d.konu}</td>
+                <td>${d.sorumlu_personel}</td>
+                <td>${d.tarih}</td>
+                <td>${d.sonuc}</td>
+                <td>
+                  <button class="btn btn-sm btn-primary btn-edit"><i class="fas fa-edit"></i></button>
+                  <button class="btn btn-sm btn-danger btn-delete"><i class="fas fa-trash"></i></button>
+                </td>
+              </tr>`;
+          });
+
+          // Sil butonlarına event ata
+          document.querySelectorAll('.btn-delete').forEach(btn => {
+            btn.onclick = function () {
+              const id = this.closest('tr').dataset.id;
+              if (confirm('Bu denetimi silmek istediğinize emin misiniz?')) {
+                fetch(`http://localhost:3000/api/denetimler/${id}`, { method: 'DELETE' })
+                  .then(res => res.json())
+                  .then(() => denetimleriGetir());
+              }
+            };
+          });
+
+          // Düzenle butonlarına event ata
+          document.querySelectorAll('.btn-edit').forEach(btn => {
+            btn.onclick = function () {
+              const tr = this.closest('tr');
+              const id = tr.dataset.id;
+              const konu = tr.children[1].textContent;
+              const personel = tr.children[2].textContent;
+              const tarih = tr.children[3].textContent;
+              const sonuc = tr.children[4].textContent;
+
+              guncellenenId = id;
+
+              document.getElementById('konu').value = konu;
+              document.getElementById('personel').value = personel;
+              document.getElementById('tarih').value = tarih;
+              document.getElementById('sonuc').value = sonuc;
+
+              document.getElementById('denetimModalLabel').textContent = 'Denetim Güncelle';
+              modal.show();
+            };
+          });
+        });
+    }
+
+    // Form submit olayı (Hem yeni kayıt hem güncelleme için)
+    denetimForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+
+      const veri = {
+        konu: document.getElementById('konu').value,
+        sorumlu_personel: document.getElementById('personel').value,
+        tarih: document.getElementById('tarih').value,
+        sonuc: document.getElementById('sonuc').value,
+      };
+
+      if (guncellenenId) {
+        // Güncelle
+        fetch(`http://localhost:3000/api/denetimler/${guncellenenId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(veri)
+        })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            alert('Denetim başarıyla güncellendi!');
+            guncellenenId = null;
+            denetimForm.reset();
+            document.getElementById('denetimModalLabel').textContent = 'Yeni Denetim Ekle';
+            modal.hide();
+            denetimleriGetir();
+          }
+        });
+      } else {
+        // Yeni ekle
+        fetch('http://localhost:3000/api/denetimler', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(veri)
+        })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            alert('Denetim başarıyla eklendi!');
+            denetimForm.reset();
+            modal.hide();
+            denetimleriGetir();
+          }
+        });
+      }
+    });
+
+    // Modal kapandığında formu temizle ve başlığı sıfırla
+    modalElement.addEventListener('hidden.bs.modal', () => {
+      denetimForm.reset();
+      guncellenenId = null;
+      document.getElementById('denetimModalLabel').textContent = 'Yeni Denetim Ekle';
+    });
+
+    window.onload = denetimleriGetir;
+  </script>
+</body>
+</html>

@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+
+  <!-- Font Awesome -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet" />
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+</head>
+<body>
+  <div class="container my-4">
+    <h1 class="mb-4 text-center">ISO 27001 Otomasyonu Dashboard</h1>
+
+    <div class="row gy-4">
+
+      <!-- 1. Risk Dağılımı -->
+      <div class="col-md-6">
+        <div class="card shadow">
+          <div class="card-header bg-primary text-white">
+            <i class="fas fa-exclamation-triangle"></i> Risk Dağılımı
+          </div>
+          <div class="card-body">
+            <canvas id="riskDagilimChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. Denetim Sonuçları -->
+      <div class="col-md-6">
+        <div class="card shadow">
+          <div class="card-header bg-success text-white">
+            <i class="fas fa-clipboard-check"></i> Denetim Sonuçları
+          </div>
+          <div class="card-body">
+            <canvas id="denetimSonuclariChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. Varlık Türleri Dağılımı -->
+      <div class="col-md-6">
+        <div class="card shadow">
+          <div class="card-header bg-info text-white">
+            <i class="fas fa-boxes"></i> Varlık Türleri Dağılımı
+          </div>
+          <div class="card-body">
+            <canvas id="varlikTurleriChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4. Kontrol Durumu -->
+      <div class="col-md-6">
+        <div class="card shadow">
+          <div class="card-header bg-warning text-dark">
+            <i class="fas fa-check-circle"></i> Kontrol Durumu
+          </div>
+          <div class="card-body">
+            <canvas id="kontrolDurumuChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- 5. Aylık Denetim Raporu -->
+      <div class="col-md-12">
+        <div class="card shadow">
+          <div class="card-header bg-secondary text-white">
+            <i class="fas fa-calendar-alt"></i> Son 6 Aylık Denetim Raporu
+          </div>
+          <div class="card-body">
+            <canvas id="aylikDenetimChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- 6. Toplam Risk Sayısı -->
+      <div class="col-md-12">
+        <div class="card shadow text-center py-4 bg-dark text-white">
+          <h3><i class="fas fa-bug"></i> Toplam Risk Sayısı</h3>
+          <h1 id="toplamRiskSayisi" class="display-1">0</h1>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    // 1. Risk Dağılımı
+    fetch('/api/dashboard/risk-dagilim')
+      .then(res => res.json())
+      .then(data => {
+        const ctx = document.getElementById('riskDagilimChart').getContext('2d');
+        new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: data.map(d => d.risk_seviyesi),
+            datasets: [{
+              label: 'Risk Adedi',
+              data: data.map(d => d.adet),
+              backgroundColor: ['#28a745', '#ffc107', '#dc3545']
+            }]
+          },
+          options: {
+            responsive: true,
+            scales: {
+              y: { beginAtZero: true }
+            }
+          }
+        });
+      });
+
+    // 2. Denetim Sonuçları
+    fetch('/api/dashboard/denetim-sonuclari')
+      .then(res => res.json())
+      .then(data => {
+        const ctx = document.getElementById('denetimSonuclariChart').getContext('2d');
+        new Chart(ctx, {
+          type: 'pie',
+          data: {
+            labels: data.map(d => d.sonuc),
+            datasets: [{
+              label: 'Denetim Sonuçları',
+              data: data.map(d => d.adet),
+              backgroundColor: ['#28a745', '#dc3545', '#ffc107']
+            }]
+          },
+          options: { responsive: true }
+        });
+      });
+
+    // 3. Varlık Türleri Dağılımı
+    fetch('/api/dashboard/varlik-turleri')
+      .then(res => res.json())
+      .then(data => {
+        const ctx = document.getElementById('varlikTurleriChart').getContext('2d');
+        new Chart(ctx, {
+          type: 'doughnut',
+          data: {
+            labels: data.map(d => d.varlik_turu),
+            datasets: [{
+              label: 'Varlık Türleri',
+              data: data.map(d => d.adet),
+              backgroundColor: ['#007bff', '#6610f2', '#6f42c1', '#20c997']
+            }]
+          },
+          options: { responsive: true }
+        });
+      });
+
+    // 4. Kontrol Durumu
+    fetch('/api/dashboard/kontrol-durumu')
+      .then(res => res.json())
+      .then(data => {
+        const ctx = document.getElementById('kontrolDurumuChart').getContext('2d');
+        new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: data.map(d => d.kontrol_var_mi),
+            datasets: [{
+              label: 'Kontrol Durumu Adedi',
+              data: data.map(d => d.adet),
+              backgroundColor: ['#17a2b8', '#6c757d']
+            }]
+          },
+          options: {
+            responsive: true,
+            scales: {
+              y: { beginAtZero: true }
+            }
+          }
+        });
+      });
+
+    // 5. Aylık Denetim Raporu
+    fetch('/api/dashboard/aylik-denetim')
+      .then(res => res.json())
+      .then(data => {
+        const ctx = document.getElementById('aylikDenetimChart').getContext('2d');
+        new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: data.map(d => d.ay),
+            datasets: [{
+              label: 'Aylık Denetim Adedi',
+              data: data.map(d => d.adet),
+              borderColor: '#007bff',
+              fill: false,
+              tension: 0.3
+            }]
+          },
+          options: {
+            responsive: true,
+            scales: {
+              y: { beginAtZero: true }
+            }
+          }
+        });
+      });
+
+    // 6. Toplam Risk Sayısı
+    fetch('/api/dashboard/toplam-risk')
+      .then(res => res.json())
+      .then(data => {
+        document.getElementById('toplamRiskSayisi').textContent = data.toplam;
+      });
+  </script>
+
+  <!-- Bootstrap JS Bundle -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
